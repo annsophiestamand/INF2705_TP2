@@ -1,11 +1,26 @@
 #include "model.h"
 #include "obj_loader.h"
 
-Model::Model(const char* path)
-// TODO
+Model::Model(const char* path):
+m_vbo(),
+m_ebo(),
+m_vao(),
+m_drawcall(m_vao, 0, GL_STATIC_DRAW)
 {
 	// TODO
 	// Cette fois-ci, la méthode BufferObject::allocate est publique (et devrait être utilisé ici)
+	std::vector<GLfloat> vertexData;
+	std::vector<GLuint> indices;
+	loadObj(path,vertexData,indices);
+	m_vbo.allocate(GL_ARRAY_BUFFER, sizeof(GLfloat)*vertexData.size(), vertexData.data(), GL_STATIC_DRAW);
+	m_ebo.allocate(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*indices.size(), indices.data(), GL_STATIC_DRAW);
+
+	m_vao.specifyAttribute(m_vbo,0,3,5,0);
+	m_vao.specifyAttribute(m_vbo,1,2,5,3);
+
+	m_vao.bind();
+	m_ebo.bind();
+	m_vao.unbind();
 }
 
 void Model::loadObj(const char* path, std::vector<GLfloat>& vertexData, std::vector<GLuint>& indices)
@@ -34,5 +49,6 @@ void Model::loadObj(const char* path, std::vector<GLfloat>& vertexData, std::vec
 void Model::draw()
 {
 	// TODO
+	m_drawcall.draw();
 }
 

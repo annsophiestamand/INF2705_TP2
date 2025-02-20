@@ -169,7 +169,11 @@ void SceneAttraction::updateInput(Window& w, double dt)
 glm::mat4 SceneAttraction::getCameraFirstPerson()
 {
     // TODO
-    return glm::mat4(1.0);
+    // message discord annso.
+    glm::mat4 firstPerson = glm::mat4(1.0f);
+    firstPerson = glm::translate(model, m_cameraPosition);
+
+    return firstPerson;
 }
 
 
@@ -181,13 +185,14 @@ glm::mat4 SceneAttraction::getCameraThirdPerson()
 
 glm::mat4 SceneAttraction::getProjectionMatrix(Window& w)
 {
-    // TODO
     const float SCREEN_SIZE_ORTHO = 10.0f;
+    float aspectRatio = static_cast<float>(w.getWidth()) / static_cast<float>(w.getHeight());
     glm::mat4 proj;
     if (m_isOrtho)
-        proj = glm::mat4(1.0);
+        proj = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 300.0f);
     else
-        proj = glm::mat4(1.0);
+        proj = glm::perspective( glm::radians(70.0f), aspectRatio, 0.1f, 300.0f );
+
     return proj;
 }
 
