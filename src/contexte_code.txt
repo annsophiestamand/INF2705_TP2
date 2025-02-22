@@ -1,0 +1,783 @@
+#ifndef BUFFER_OBJECT_H
+#define BUFFER_OBJECT_H
+
+#include <GL/glew.h>
+
+class BufferObject
+{
+public:
+    BufferObject();
+    BufferObject(GLenum type, GLsizeiptr dataSize, const void* data, GLenum usage);
+    ~BufferObject();
+
+    void bind();
+    
+    void allocate(GLenum type, GLsizeiptr dataSize, const void* data, GLenum usage);
+    
+    void update(GLsizeiptr dataSize, const void* data);
+    
+    void* mapBuffer();
+    void unmapBuffer();
+    
+private:
+    GLuint m_id;
+    GLenum m_type;
+};
+
+#endif // BUFFER_OBJECT_H
+#include "window.h"
+
+extern void corrector(Window& w);
+#ifndef DRAW_COMMANDS_H
+#define DRAW_COMMANDS_H
+
+#include <GL/glew.h>
+
+#include "vertex_array_object.h"
+
+class DrawArraysCommand
+{
+public:
+    DrawArraysCommand(VertexArrayObject& vao, GLsizei count);
+    void draw();
+    
+    void setCount(GLsizei count);
+private:
+    VertexArrayObject& m_vao;
+    GLsizei m_count;
+};
+
+
+class DrawElementsCommand
+{
+public:
+    DrawElementsCommand(VertexArrayObject& vao, GLsizei count, GLenum type = GL_UNSIGNED_BYTE);
+    void draw();
+    
+    void setCount(GLsizei count);
+private:
+    VertexArrayObject& m_vao;
+    GLsizei m_count;
+    GLenum m_type;
+};
+
+#endif // DRAW_COMMANDS_H
+#include <iostream>
+#include <chrono>
+
+#include <GL/glew.h>
+
+#include "imgui/imgui.h"
+
+#include "window.h"
+#include "resources.h"
+
+#include "scenes/scene_attraction.h"
+
+#include "corrector.h"
+
+void printGLInfo();
+
+int main(int argc, char* argv[])
+{
+    const bool VSYNC = false;
+    Window w;
+    if (!w.init(VSYNC))
+        return -1;
+    
+    GLenum rev = glewInit();
+    if (rev != GLEW_OK)
+    {
+        std::cout << "Could not initialize glew! GLEW_Error: " << glewGetErrorString(rev) << std::endl;
+        return -2;
+    }
+        
+    printGLInfo();
+    
+    //corrector(w);
+    
+    bool isMouseMotionEnabled = false;
+    
+    Resources res;
+    
+    SceneAttraction s1(res, isMouseMotionEnabled);
+    
+    glClearColor(0.75f, 0.95f, 0.95f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    
+    const char* const SCENE_NAMES[] = {
+        "Attraction"
+    };
+    const int N_SCENE_NAMES = sizeof(SCENE_NAMES) / sizeof(SCENE_NAMES[0]);
+    int currentScene = 0;
+    
+    std::chrono::high_resolution_clock::time_point lastTime = std::chrono::high_resolution_clock::now(); 
+    
+    bool isRunning = true;
+    while (isRunning)
+    {
+        std::chrono::high_resolution_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = currentTime - lastTime;
+        double dt = elapsed.count();
+        lastTime = currentTime;
+        
+        if (dt > 1.0)
+            dt = 0.0; // skip frame update
+    
+        if (w.shouldResize())
+            glViewport(0, 0, w.getWidth(), w.getHeight());
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        ImGui::Begin("Scene Parameters");
+        ImGui::Combo("Scene", &currentScene, SCENE_NAMES, N_SCENE_NAMES);
+        ImGui::End();
+        
+        if (w.getKeyPress(Window::Key::SPACE))
+            isMouseMotionEnabled = !isMouseMotionEnabled;
+            
+        if (isMouseMotionEnabled)
+            w.hideMouse();
+        else
+            w.showMouse();
+        
+        if (w.getKeyPress(Window::Key::T))
+            currentScene = ++currentScene < N_SCENE_NAMES ? currentScene : 0;
+        
+        switch (currentScene)
+        {
+            case 0: s1.run(w, dt); break;
+        }       
+        
+        w.swap();
+        w.pollEvent();
+        isRunning = !w.shouldClose() && !w.getKeyPress(Window::Key::ESC);
+    }
+
+    return 0;
+}
+
+
+void printGLInfo()
+{
+    std::cout << "OpenGL info:"          << std::endl;
+    std::cout << "    Vendor: "          << glGetString(GL_VENDOR)                   << std::endl;
+    std::cout << "    Renderer: "        << glGetString(GL_RENDERER)                 << std::endl;
+    std::cout << "    Version: "         << glGetString(GL_VERSION)                  << std::endl;
+    std::cout << "    Shading version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+}
+
+
+#include "model.h"
+#include "obj_loader.h"
+
+Model::Model(const char* path):
+m_vbo(),
+m_ebo(),
+m_vao(),
+m_drawcall(m_vao, 0, GL_STATIC_DRAW) 
+{
+	// TODO
+	// Cette fois-ci, la méthode BufferObject::allocate est publique (et devrait être utilisé ici)
+	std::vector<GLfloat> vertexData;
+	std::vector<GLuint> indices;
+	loadObj(path,vertexData,indices);
+	m_drawcall.setCount(indices.size());
+	m_vbo.allocate(GL_ARRAY_BUFFER, sizeof(GLfloat)*vertexData.size(), vertexData.data(), GL_STATIC_DRAW);
+	m_ebo.allocate(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*indices.size(), indices.data(), GL_STATIC_DRAW);
+	m_vao.bind();
+	m_ebo.bind();
+	m_vao.specifyAttribute(m_vbo,0,3,5,0);
+	m_vao.specifyAttribute(m_vbo,1,2,5,3);
+	m_vao.unbind();
+}
+
+void Model::loadObj(const char* path, std::vector<GLfloat>& vertexData, std::vector<GLuint>& indices)
+{
+	objl::Loader loader;
+	bool loadout = loader.LoadFile(path);
+	if (!loadout)
+	{
+		std::cout << "Unable to load model " << path << std::endl;
+		return;
+	}
+
+	for (size_t i = 0; i < loader.LoadedVertices.size(); i++)
+	{
+		objl::Vector3 p = loader.LoadedVertices[i].Position;
+		vertexData.push_back(p.X);
+		vertexData.push_back(p.Y);
+		vertexData.push_back(p.Z);
+		objl::Vector2 t = loader.LoadedVertices[i].TextureCoordinate;
+		vertexData.push_back(t.X);
+		vertexData.push_back(t.Y);
+	}
+	indices = loader.LoadedIndices;
+}
+
+void Model::draw()
+{
+	// TODO
+	m_drawcall.draw();
+}
+
+#ifndef MODEL_H
+#define MODEL_H
+
+#include <vector>
+
+#include "buffer_object.h"
+#include "draw_commands.h"
+#include "vertex_array_object.h"
+
+class Model
+{
+public:
+	Model(const char* path);
+	void draw();
+
+private:
+	void loadObj(const char* path, std::vector<GLfloat>& vertexData, std::vector<GLuint>& indices);
+
+private:
+	BufferObject m_vbo, m_ebo;
+	VertexArrayObject m_vao;
+	DrawElementsCommand m_drawcall;
+};
+
+#endif // BUFFER_OBJECT_H
+#include "resources.h"
+
+#include "utils.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+Resources::Resources()
+{
+   initShaderProgram(colorUniform, "shaders/colorUniform.vs.glsl", "shaders/colorUniform.fs.glsl");
+    //mvp location get le uniform , regarder l'ancien tp pour le setup des ressources
+    mvpLocationColorUniform = colorUniform.getUniformLoc("mat");
+    colorLocationColorUniform = colorUniform.getUniformLoc("color");
+}
+
+#ifndef RESOURCES_H
+#define RESOURCES_H
+
+#include "shader_program.h"
+
+#include "buffer_object.h"
+
+class Resources
+{
+public:
+    Resources();
+    
+    void initShaderProgram(ShaderProgram& program, const char* vertexSrcPath, const char* fragmentSrcPath);
+    
+    // Shaders    
+    ShaderProgram texture; 
+    GLint mvpLocationTexture;
+    
+    ShaderProgram colorUniform; 
+    GLint mvpLocationColorUniform;
+    GLint colorLocationColorUniform;
+    
+    ShaderProgram cup;
+    GLint mvpLocationCup;
+    GLint textureIndexLocationCup;
+    GLint isPlateLocationCup;
+};
+
+#endif // RESOURCES_H
+#ifndef SHADER_OBJECT_H
+#define SHADER_OBJECT_H
+
+#include <GL/glew.h>
+
+class ShaderObject
+{
+public:
+    ShaderObject(GLenum type, const char* code);
+    ~ShaderObject();
+    
+    GLuint id();
+    
+private:
+    void checkCompilingError();
+    
+private:
+    GLuint m_id;
+};
+
+#endif // SHADER_OBJECT_H
+#ifndef SHADER_PROGRAM_H
+#define SHADER_PROGRAM_H
+
+#include <GL/glew.h>
+
+class ShaderObject;
+
+class ShaderProgram
+{
+public:
+    ShaderProgram();
+    ~ShaderProgram();
+    
+    void use();
+    void attachShaderObject(ShaderObject& s);
+    void link();
+    
+    GLint getUniformLoc(const char* name);
+    
+private:
+    void checkLinkingError();
+
+private:
+    GLuint m_id;
+};
+
+
+#endif // SHADER_PROGRAM_H
+#include "texture.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include <iostream>
+
+Texture2D::Texture2D(const char* path)
+{
+    int width, height, nChannels;
+    stbi_set_flip_vertically_on_load(true);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    unsigned char* data = stbi_load(path, &width, &height, &nChannels, 0);
+    if (data == NULL)
+        std::cout << "Error loading texture \"" << path << "\": " << stbi_failure_reason() << std::endl;
+
+    // TODO - Chargement de la texture, attention au format des pixels de l'image!
+
+    stbi_image_free(data);
+}
+
+Texture2D::~Texture2D()
+{
+    // TODO
+}
+
+void Texture2D::setFiltering(GLenum filteringMode)
+{
+    // TODO - min et mag filter
+}
+
+void Texture2D::setWrap(GLenum wrapMode)
+{
+    // TODO
+}
+
+void Texture2D::enableMipmap()
+{
+    // TODO - mipmap et filtering correspondant
+}
+
+void Texture2D::use()
+{
+    // TODO
+}
+
+#ifndef TEXTURES_H
+#define TEXTURES_H
+
+
+#include <GL/glew.h>
+
+class Texture2D
+{
+public:
+	Texture2D(const char* path);
+	~Texture2D();
+	
+	void setFiltering(GLenum filteringMode);
+	void setWrap(GLenum wrapMode);
+
+	void enableMipmap();
+
+	void use();
+
+private:
+	GLuint m_id;
+};
+
+
+#endif // TEXTURES
+#include "utils.h"
+
+#include <random>
+#include <chrono>
+
+#include <GL/glew.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+void checkGLError(const char* file, int line)
+{
+    GLenum error;
+    while ( ( error = glGetError() ) != GL_NO_ERROR )
+    {
+        std::cerr << "GL_ERROR, File " << file << " (Line " << line << "): ";
+        switch ( error )
+        {
+        case GL_INVALID_ENUM:
+            std::cerr << "GL_INVALID_ENUM";
+            break;
+        case GL_INVALID_VALUE:
+            std::cerr << "GL_INVALID_VALUE";
+            break;
+        case GL_INVALID_OPERATION:
+            std::cerr << "GL_INVALID_OPERATION";
+            break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            std::cerr << "GL_INVALID_FRAMEBUFFER_OPERATION";
+            break;
+        case GL_OUT_OF_MEMORY:
+            std::cerr << "GL_OUT_OF_MEMORY";
+            break;
+        case GL_STACK_UNDERFLOW:
+            std::cerr << "GL_STACK_UNDERFLOW";
+            break;
+        case GL_STACK_OVERFLOW:
+            std::cerr << "GL_STACK_OVERFLOW";
+            break;
+        default:
+            std::cerr << "Unknown gl error occured!";
+            break;
+        }
+        std::cerr << std::endl;
+    }
+}
+
+
+std::string readFile(const char* path)
+{
+    std::ifstream file(path);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+double rand01()
+{
+	static std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+	static std::uniform_real_distribution<double> distribution(0, 1);
+	return distribution(generator);
+}
+
+#ifndef UTILS_H
+#define UTILS_H
+
+#include <string>
+
+#define CHECK_GL_ERROR checkGLError(__FILE__, __LINE__)
+void checkGLError(const char* file, int line);
+
+std::string readFile(const char* path);
+
+double rand01();
+
+
+#endif // UTILS_H
+#ifndef VERTEX_ARRAY_OBJECT_H
+#define VERTEX_ARRAY_OBJECT_H
+
+#include "buffer_object.h"
+
+class VertexArrayObject
+{
+public:
+    VertexArrayObject();
+    ~VertexArrayObject();
+
+    void bind();
+    void unbind();
+    
+    void specifyAttribute(BufferObject& buffer, GLuint index, GLint size, GLsizei stride, GLsizeiptr offset);
+    
+private:
+    GLuint m_id;
+};
+
+#endif // VERTEX_ARRAY_OBJECT_H
+#ifndef VERTICES_DATA_H
+#define VERTICES_DATA_H
+
+
+#endif // VERTICES_DATA_H
+#include "window.h"
+
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl2.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#include <iostream>
+
+
+Window::Window()
+: m_window(nullptr)
+, m_context(nullptr)
+, m_shouldClose(false)
+, m_shouldResize(false)
+, m_width(0), m_height(0)
+, m_mouseX(0)
+, m_mouseY(0)
+, m_scroll(0)
+{
+    
+}
+    
+Window::~Window()
+{
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
+    SDL_GL_DeleteContext(m_context);
+    SDL_DestroyWindow(m_window);
+    SDL_Quit();
+}
+    
+bool Window::init(bool vsync)
+{
+    const Uint32 flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS;
+    if (SDL_Init(flags) < 0)
+    {
+        std::cout << "Could not initialize SDL! SDL_Error: " << SDL_GetError() << std::endl;
+        SDL_ClearError();
+        return false;
+    }
+    
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+    
+    m_window = SDL_CreateWindow("INF2705 - Tp", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 800, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    if (!m_window)
+    {
+        std::cout << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        SDL_ClearError();
+        return false;
+    }
+    
+    SDL_GetWindowSize(m_window, &m_width, &m_height);
+    //hideMouse();
+    
+    m_context = SDL_GL_CreateContext(m_window);
+    if (!m_context)
+    {
+        std::cout << "Context could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        SDL_ClearError();
+        return false;
+    }
+
+    const int VSYNC = 1; // 1 on, 0 off, -1 adaptive
+    if (vsync)
+        SDL_GL_SetSwapInterval(VSYNC);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    ImGui::StyleColorsDark();
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL2_InitForOpenGL(m_window, m_context);
+    ImGui_ImplOpenGL3_Init();
+
+    pollEvent(); // to generate the data for the first frame of ImGui
+    
+    return true;
+}
+
+void Window::swap()
+{
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    SDL_GL_SwapWindow(m_window);
+}
+
+void Window::pollEvent()
+{
+    m_scroll = 0;
+    SDL_Event e;
+    while (SDL_PollEvent(&e))
+    {
+        ImGui_ImplSDL2_ProcessEvent(&e);
+        switch (e.type)
+        {
+        case SDL_QUIT: 
+            m_shouldClose = true;
+            break;
+        case SDL_WINDOWEVENT:
+            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+            {
+                m_width  = e.window.data1;
+                m_height = e.window.data2;
+                m_shouldResize = true;
+            }
+            else if (e.window.event == SDL_WINDOWEVENT_SHOWN)
+            {
+                SDL_GetWindowSize(m_window, &m_width, &m_height);
+                m_shouldResize = true;
+            }
+            break;
+        case SDL_KEYDOWN:
+            if (e.key.repeat) break; // disable key hold for now
+            m_keys[(Key)e.key.keysym.sym] = true;
+            break;
+        case SDL_KEYUP:
+            m_keys[(Key)e.key.keysym.sym] = false;
+            break;
+        case SDL_MOUSEMOTION:
+            m_mouseX += e.motion.xrel;
+            m_mouseY += e.motion.yrel;
+            break;
+        case SDL_MOUSEWHEEL:
+            if (e.wheel.y > 0) m_scroll = 1;
+            else if (e.wheel.y < 0) m_scroll = -1;
+            break;
+        }
+    }
+
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+    // ImGui::ShowDemoWindow(); // If you want to see what ImGui has to offer
+}
+
+
+void Window::getMouseMotion(int& x, int& y)
+{
+    x = m_mouseX; y = m_mouseY;
+    m_mouseX = m_mouseY = 0;
+}
+
+int Window::getMouseScrollDirection()
+{
+    return m_scroll;
+}
+
+void Window::showMouse()
+{
+    m_mouseX = m_mouseY = 0;
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+}
+
+void Window::hideMouse()
+{
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+}
+
+bool Window::getKeyHold(Key k)
+{
+    return m_keys[k];
+}
+
+bool Window::getKeyPress(Key k)
+{
+    bool state = m_keys[k];
+    m_keys[k] = false;
+    return state;
+}
+
+unsigned int Window::getTick()
+{
+    return SDL_GetTicks();
+}
+
+bool Window::shouldClose()  { return m_shouldClose; }    
+bool Window::shouldResize()
+{
+    bool resize = m_shouldResize;
+    m_shouldResize = false; 
+    return resize;
+}
+
+int Window::getWidth()  { return m_width;  }
+int Window::getHeight() { return m_height; }
+#ifndef WINDOW_H
+#define WINDOW_H
+
+#include <unordered_map>
+#include <SDL.h>
+
+
+class Window
+{
+public:
+    enum Key
+    {
+        ESC = SDLK_ESCAPE,
+        T = SDLK_t,
+        R = SDLK_r,
+        W = SDLK_w,
+        A = SDLK_a,
+        S = SDLK_s,
+        D = SDLK_d,
+        Q = SDLK_q,
+        E = SDLK_e,
+        SPACE = SDLK_SPACE,
+        UP = SDLK_UP,
+        DOWN = SDLK_DOWN,
+        LEFT = SDLK_LEFT,
+        RIGHT = SDLK_RIGHT
+    };
+    
+public:
+    Window();
+    ~Window();
+    
+    bool init(bool vsync);
+    
+    void swap();    
+    void pollEvent();
+    
+    bool getKeyHold(Key k);
+    bool getKeyPress(Key k);
+    
+    void getMouseMotion(int& x, int& y);
+    int getMouseScrollDirection();
+
+    void showMouse();
+    void hideMouse();
+    
+    unsigned int getTick();
+    
+    bool shouldClose();
+    bool shouldResize();
+    
+    int getWidth();
+    int getHeight();
+
+private:
+    SDL_Window* m_window;
+    SDL_GLContext m_context;
+    
+    bool m_shouldClose;
+    bool m_shouldResize;
+    int m_width, m_height;
+    
+    std::unordered_map<Key, bool> m_keys;
+    int m_mouseX, m_mouseY, m_scroll;
+};
+
+#endif // WINDOW_H
