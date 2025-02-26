@@ -51,7 +51,6 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
 {
     // TODO - spécifier les attributs
 
-    
     m_groundVao.bind();
     m_groundIndicesBuffer.bind();
     m_groundVao.specifyAttribute(m_groundBuffer, 0, 3, 5, 0); 
@@ -59,7 +58,8 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
     m_groundVao.unbind();
     
     // TODO - init des textures
-
+    m_groundTexture.setWrap(GL_REPEAT); // repeter la texture
+    m_groundTexture.enableMipmap();    
 }
 
 SceneAttraction::~SceneAttraction()
@@ -99,10 +99,13 @@ void SceneAttraction::run(Window& w, double dt)
 
     m_resources.colorUniform.use();
     glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-    glUniform3f(m_resources.colorLocationColorUniform, 0.3f, 0.8f, 0.0f); // vert
+    //glUniform3f(m_resources.colorLocationColorUniform, 0.3f, 0.8f, 0.0f); // vert
+    
+    m_resources.texture.use();
+    m_groundTexture.use();
     m_groundDraw.draw();
 
-   //faire les cub
+   //faire les cubes
     glm::vec3 cubePositions[4] = {
         glm::vec3( 30.f, 3.f,  0.f),
         glm::vec3(-30.f, 3.f,  0.f),

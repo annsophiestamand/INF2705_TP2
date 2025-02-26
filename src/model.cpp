@@ -47,9 +47,6 @@ void Model::loadObj(const char* path, std::vector<GLfloat>& vertexData, std::vec
 
 void Model::draw()
 {
-	// TODO 
 	m_drawcall.draw();
-	
-
 }
 
