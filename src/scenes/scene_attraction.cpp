@@ -59,7 +59,19 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
     
     // TODO - init des textures
     m_groundTexture.setWrap(GL_REPEAT); // repeter la texture
-    m_groundTexture.enableMipmap();    
+    m_groundTexture.enableMipmap();
+
+    m_suzanneTexture.setFiltering(GL_CLAMP_TO_EDGE);
+    m_suzanneTexture.setWrap(GL_REPEAT);
+
+    m_cupTextureAtlas.setFiltering(GL_CLAMP_TO_EDGE)
+    m_cupTextureAtlas.setWrap(GL_REPEAT);
+
+    m_smallPlatformTexture.setFiltering(GL_CLAMP_TO_EDGE)
+    m_smallPlatformTexture.setWrap(GL_REPEAT);
+
+    m_largePlatformTexture.setFiltering(GL_CLAMP_TO_EDGE)
+    m_largePlatformTexture.setWrap(GL_NEAREST); // effet pixelise
 }
 
 SceneAttraction::~SceneAttraction()
