@@ -39,22 +39,30 @@ Texture2D::Texture2D(const char* path)
 
 Texture2D::~Texture2D()
 {
-    // TODO
+    glDeleteTextures(1, &m_id);
 }
 
 void Texture2D::setFiltering(GLenum filteringMode)
 {
-    // TODO - min et mag filter
+    glBindTexture(GL_TEXTURE_2D, m_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filteringMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filteringMode);
 }
 
 void Texture2D::setWrap(GLenum wrapMode)
 {
-    // TODO
+    glBindTexture(GL_TEXTURE_2D, m_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+
 }
 
 void Texture2D::enableMipmap()
 {
-    // TODO - mipmap et filtering correspondant
+    glBindTexture(GL_TEXTURE_2D, m_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 void Texture2D::use()
