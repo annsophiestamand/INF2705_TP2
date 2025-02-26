@@ -15,8 +15,7 @@ Texture2D::Texture2D(const char* path)
         std::cout << "Error loading texture \"" << path << "\": " << stbi_failure_reason() << std::endl;
 
     glGenTextures(1, &m_id);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_id);
+    use();
 
     switch (nChannels) {
         case 1:
@@ -44,14 +43,14 @@ Texture2D::~Texture2D()
 
 void Texture2D::setFiltering(GLenum filteringMode)
 {
-    glBindTexture(GL_TEXTURE_2D, m_id);
+    use();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filteringMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filteringMode);
 }
 
 void Texture2D::setWrap(GLenum wrapMode)
 {
-    glBindTexture(GL_TEXTURE_2D, m_id);
+    use();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
 
@@ -59,7 +58,7 @@ void Texture2D::setWrap(GLenum wrapMode)
 
 void Texture2D::enableMipmap()
 {
-    glBindTexture(GL_TEXTURE_2D, m_id);
+    use();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -67,6 +66,6 @@ void Texture2D::enableMipmap()
 
 void Texture2D::use()
 {
-    // TODO
+    glBindTexture(GL_TEXTURE_2D, m_id);
 }
 
