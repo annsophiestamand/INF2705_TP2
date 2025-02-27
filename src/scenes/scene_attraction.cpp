@@ -9,10 +9,10 @@
 
 // TODO - coordonnées de texture
 const GLfloat groundData[] = {
-    -45.f, 0.0f, -45.f,  0.0f, 0.0f,
-     45.f, 0.0f, -45.f,  0.0f, 0.0f,
-    -45.f, 0.0f,  45.f,  0.0f, 0.0f,
-     45.f, 0.0f,  45.f,  0.0f, 0.0f,
+    -45.f, 0.0f, -45.f,  -3.0f, -3.0f,
+     45.f, 0.0f, -45.f,  3.0f, -3.0f,
+    -45.f, 0.0f,  45.f,  -3.0f, 3.0f,
+     45.f, 0.0f,  45.f,  3.0f, 3.0f,
 };
 
 const GLubyte indexes[] = {
@@ -110,9 +110,10 @@ void SceneAttraction::run(Window& w, double dt)
     mvp = proj * view * model;
 
     // texture sur le sol
-    m_resources.texture.use();\
-    
+    m_resources.texture.use();
+    m_groundVao.bind();
     glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+    m_groundIndicesBuffer.bind();
     m_groundTexture.use();
     m_groundDraw.draw();
 
