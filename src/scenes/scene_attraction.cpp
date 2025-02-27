@@ -64,20 +64,20 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
     m_suzanneTexture.setFiltering(GL_CLAMP_TO_EDGE);
     m_suzanneTexture.setWrap(GL_REPEAT);
 
-    m_cupTextureAtlas.setFiltering(GL_CLAMP_TO_EDGE)
+    m_cupTextureAtlas.setFiltering(GL_CLAMP_TO_EDGE);
     m_cupTextureAtlas.setWrap(GL_REPEAT);
 
-    m_smallPlatformTexture.setFiltering(GL_CLAMP_TO_EDGE)
+    m_smallPlatformTexture.setFiltering(GL_CLAMP_TO_EDGE);
     m_smallPlatformTexture.setWrap(GL_REPEAT);
 
-    m_largePlatformTexture.setFiltering(GL_CLAMP_TO_EDGE)
+    m_largePlatformTexture.setFiltering(GL_CLAMP_TO_EDGE);
     m_largePlatformTexture.setWrap(GL_NEAREST); // effet pixelise
 }
 
 SceneAttraction::~SceneAttraction()
 {
 }
-//IMPORTANT : les roations de tout objet dans le monde local comprends les axes aussi , une rotation dans l'axe de y changera l'orientation de x et z!!
+//IMPORTANT : les rotations de tout objet dans le monde local comprends les axes aussi , une rotation dans l'axe de y changera l'orientation de x et z!!
 void SceneAttraction::run(Window& w, double dt)
 {    
     ImGui::Begin("Scene Parameters");
@@ -109,11 +109,10 @@ void SceneAttraction::run(Window& w, double dt)
     model = glm::translate(model, glm::vec3(0.0f, -0.1f, 0.0f)); // juste un petit decalage en bas
     mvp = proj * view * model;
 
-    m_resources.colorUniform.use();
-    glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-    //glUniform3f(m_resources.colorLocationColorUniform, 0.3f, 0.8f, 0.0f); // vert
+    // texture sur le sol
+    m_resources.texture.use();\
     
-    m_resources.texture.use();
+    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
     m_groundTexture.use();
     m_groundDraw.draw();
 
@@ -324,7 +323,6 @@ glm::mat4 SceneAttraction::getCameraThirdPerson()
 
 glm::mat4 SceneAttraction::getProjectionMatrix(Window& w)
 {
-    const float SCREEN_SIZE_ORTHO = 10.0f;
     float aspectRatio = static_cast<float>(w.getWidth()) / static_cast<float>(w.getHeight());
     glm::mat4 proj;
     if (m_isOrtho)
