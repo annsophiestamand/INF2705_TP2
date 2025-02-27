@@ -61,17 +61,17 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
     m_groundTexture.setWrap(GL_REPEAT); // repeter la texture
     m_groundTexture.enableMipmap();
 
-    m_suzanneTexture.setFiltering(GL_CLAMP_TO_EDGE);
-    m_suzanneTexture.setWrap(GL_REPEAT);
+    m_suzanneTexture.setFiltering(GL_LINEAR);
+    m_suzanneTexture.setWrap(GL_CLAMP_TO_EDGE);
 
-    m_cupTextureAtlas.setFiltering(GL_CLAMP_TO_EDGE);
-    m_cupTextureAtlas.setWrap(GL_REPEAT);
+    m_cupTextureAtlas.setFiltering(GL_LINEAR);
+    m_cupTextureAtlas.setWrap(GL_CLAMP_TO_EDGE);
 
-    m_smallPlatformTexture.setFiltering(GL_CLAMP_TO_EDGE);
-    m_smallPlatformTexture.setWrap(GL_REPEAT);
+    m_smallPlatformTexture.setFiltering(GL_LINEAR);
+    m_smallPlatformTexture.setWrap(GL_CLAMP_TO_EDGE);
 
-    m_largePlatformTexture.setFiltering(GL_CLAMP_TO_EDGE);
-    m_largePlatformTexture.setWrap(GL_NEAREST); // effet pixelise
+    m_largePlatformTexture.setFiltering(GL_NEAREST);
+    m_largePlatformTexture.setWrap(GL_CLAMP_TO_EDGE); // effet pixelise
 }
 
 SceneAttraction::~SceneAttraction()
@@ -111,9 +111,7 @@ void SceneAttraction::run(Window& w, double dt)
 
     // texture sur le sol
     m_resources.texture.use();
-    m_groundVao.bind();
     glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
-    m_groundIndicesBuffer.bind();
     m_groundTexture.use();
     m_groundDraw.draw();
 
@@ -149,8 +147,9 @@ void SceneAttraction::run(Window& w, double dt)
     model = glm::rotate(model, m_largePlatformAngle, glm::vec3(0.0f, 1.0f, 0.0f));
     
     mvp = proj * view * model;
-    glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-    glUniform3f(m_resources.colorLocationColorUniform, 0.5f, 1.0f, 0.5f);
+    m_resources.texture.use();
+    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+    m_largePlatformTexture.use();
     m_largePlatform.draw();
 
     // 4 les petites plateormes (3 groupes)
@@ -173,8 +172,9 @@ void SceneAttraction::run(Window& w, double dt)
 
         // Dessin de la petite plateforme
         mvp = proj * view * groupModel; //faire le calcul final pour affecter sur l<objet
-        glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-        glUniform3f(m_resources.colorLocationColorUniform, 1.0f, 0.5f, 0.5f); 
+        m_resources.texture.use();       
+        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+        m_smallPlatformTexture.use();
         m_smallPlatform.draw();
 
 
@@ -224,7 +224,7 @@ void SceneAttraction::run(Window& w, double dt)
                     
                     mvp = proj * view * monkeyModel;
                     glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-                    glUniform3f(m_resources.colorLocationColorUniform, 1.0f, 0.7f, 0.0f); // orange
+                    m_suzanneTexture.use();
                     m_suzanne.draw();
 
                    
