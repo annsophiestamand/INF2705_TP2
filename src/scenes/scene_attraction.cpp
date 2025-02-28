@@ -197,10 +197,13 @@ void SceneAttraction::run(Window& w, double dt)
             // petites assiette
             {
                 glm::mat4 plateModel = cupBase;
-                // plateModel = glm::translate(plateModel, glm::vec3(0.0f, 0.0f, 0.0f)); // déjà sur y=0
                 mvp = proj * view * plateModel;
-                glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-                glUniform3f(m_resources.colorLocationColorUniform, 0.8f, 0.8f, 0.8f); // gris
+                
+                m_resources.cup.use();
+                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
+                glUniform1i(m_resources.isPlateLocationCup, 1);
+                glUniform1i(m_resources.textureIndexLocationCup, i);
+                m_cupTextureAtlas.use();
                 m_cupPlate.draw();
             }
 
@@ -209,8 +212,11 @@ void SceneAttraction::run(Window& w, double dt)
                 glm::mat4 finalCupModel = cupBase;
                 finalCupModel = glm::translate(finalCupModel, glm::vec3(0.0f, 0.12f, 0.0f)); // tasse un peu plus haut
                 mvp = proj * view * finalCupModel;
-                glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-                glUniform3f(m_resources.colorLocationColorUniform, 0.2f, 0.6f, 1.0f); // bleu
+                m_resources.cup.use();
+                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
+                glUniform1i(m_resources.isPlateLocationCup, 0);
+                glUniform1i(m_resources.textureIndexLocationCup, i);
+                m_cupTextureAtlas.use();
                 m_cup.draw();
 
                 if (i == 0 && j == 0)
@@ -223,7 +229,8 @@ void SceneAttraction::run(Window& w, double dt)
 
                     
                     mvp = proj * view * monkeyModel;
-                    glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
+                    m_resources.texture.use(); 
+                    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
                     m_suzanneTexture.use();
                     m_suzanne.draw();
 
