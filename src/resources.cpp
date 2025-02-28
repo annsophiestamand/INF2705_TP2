@@ -15,9 +15,9 @@ Resources::Resources()
     initShaderProgram(texture, "shaders/texture.vs.glsl", "shaders/texture.fs.glsl");
     mvpLocationCup = texture.getUniformLoc("mvp");
 
-    // initShaderProgram(cup, "shaders/cup.vs.glsl", "shaders/texture.fs.glsl");
-    // mvpLocationCup = cup.getUniformLoc("");
-    // textureIndexLocationCup = cup.getUniformLoc("");
-    // isPlateLocationCup = cup.getUniformLoc("");
+    initShaderProgram(cup, "shaders/cup.vs.glsl", "shaders/texture.fs.glsl");
+    mvpLocationCup = cup.getUniformLoc("mvp");
+    textureIndexLocationCup = cup.getUniformLoc("cupIndex");
+    isPlateLocationCup = cup.getUniformLoc("isCup");
 }
 
