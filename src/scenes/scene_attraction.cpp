@@ -79,13 +79,19 @@ SceneAttraction::~SceneAttraction()
 }
 //IMPORTANT : les rotations de tout objet dans le monde local comprends les axes aussi , une rotation dans l'axe de y changera l'orientation de x et z!!
 void SceneAttraction::run(Window& w, double dt)
-{    
+{   const float CUBE_COLORS[4][3] = {
+        {1.0f, 0.0f, 0.0f}, // Rouge
+        {0.0f, 1.0f, 0.0f}, // Vert
+        {0.0f, 0.0f, 1.0f}, // Bleu
+        {1.0f, 1.0f, 0.0f}  // Jaune
+    };
+    
     ImGui::Begin("Scene Parameters");
     ImGui::Combo("Camera mode", &m_cameraMode, CAMERA_MODE_NAMES, N_CAMERA_MODE_NAMES);
     ImGui::Checkbox("Orthographic camera?", &m_isOrtho);
     ImGui::End();
     
-    updateInput(w, dt);    
+    updateInput(w, dt);
     
     m_largePlatformAngle += 0.5 * dt;
     for (int i = 0; i < 3; i++)
@@ -132,9 +138,9 @@ void SceneAttraction::run(Window& w, double dt)
         //recalculer le mvp pour le cube en focntion des autres matrices
         mvp = proj * view * model;
 
-
+        m_resources.colorUniform.use();
         glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-        glUniform3f(m_resources.colorLocationColorUniform, 0.0f, 0.0f, 0.0f); // mettre les couleurs en noir
+        glUniform3f(m_resources.colorLocationColorUniform, CUBE_COLORS[i][0], CUBE_COLORS[i][1], CUBE_COLORS[i][2]);
         m_cube.draw();
     }
 
@@ -180,7 +186,7 @@ void SceneAttraction::run(Window& w, double dt)
 
         // 5. tasses et petites assiettes, 4 par groupes, un set de tasses pour chq plateforme
         //  chacune sur un cercle de rayon 6 autour de la petite plateforme
-        // separees par 90 degree (360/4 = 90)
+        //  separees par 90 degree (360/4 = 90)
         //  chaque tasses a son propres angle d<animation qui va determiner 
         //  assiette est à y=0 (relative), la tasse à y=0.12 par dessus
         for (int j = 0; j < 4; j++)
