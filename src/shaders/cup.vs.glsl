@@ -28,8 +28,8 @@ void main() {
     int row = (cupIndex < 2) ? 0 : 1;
     int column = (cupIndex % 2 == 0) ? 0 : 1;
 
-    float x = in_vertexCoords[0] * widthLeap + (column * widthLeap);
-    float y = in_vertexCoords[1] * heightLeap + (row * heightLeap);
+    float x = (in_vertexCoords[0] + column) * widthLeap;
+    float y = (in_vertexCoords[1] + row) * heightLeap;
 
     if (isPlate == 1){
         x += PLATE_WIDTH_START;

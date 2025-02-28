@@ -202,7 +202,7 @@ void SceneAttraction::run(Window& w, double dt)
                 m_resources.cup.use();
                 glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
                 glUniform1i(m_resources.isPlateLocationCup, 1);
-                glUniform1i(m_resources.textureIndexLocationCup, i);
+                glUniform1i(m_resources.textureIndexLocationCup, j);
                 m_cupTextureAtlas.use();
                 m_cupPlate.draw();
             }
@@ -215,7 +215,7 @@ void SceneAttraction::run(Window& w, double dt)
                 m_resources.cup.use();
                 glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
                 glUniform1i(m_resources.isPlateLocationCup, 0);
-                glUniform1i(m_resources.textureIndexLocationCup, i);
+                glUniform1i(m_resources.textureIndexLocationCup, j);
                 m_cupTextureAtlas.use();
                 m_cup.draw();
 
