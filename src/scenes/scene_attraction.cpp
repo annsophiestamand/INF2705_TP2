@@ -101,7 +101,10 @@ void SceneAttraction::run(Window& w, double dt)
             m_cupsAngles[i][j] += (0.5 + j * 0.5f) * dt;
     }
 
-    glm::mat4 model, proj, view, mvp;
+    glm::mat4 model, proj, view, mvp, m_suzanneModelMatrix;
+    //definir un vecteur de position dans le but de l'optmisation
+    glm::vec3 m_suzannePos;
+    float m_suzanneHeading;
     
     proj = getProjectionMatrix(w);
     
@@ -120,29 +123,6 @@ void SceneAttraction::run(Window& w, double dt)
     glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
     m_groundTexture.use();
     m_groundDraw.draw();
-
-   //faire les cubes
-    glm::vec3 cubePositions[4] = {
-        glm::vec3( 30.f, 3.f,  0.f),
-        glm::vec3(-30.f, 3.f,  0.f),
-        glm::vec3(  0.f, 3.f, 30.f),
-        glm::vec3(  0.f, 3.f,-30.f)
-    };
-
-    for (int i = 0; i < 4; i++)
-    {
-        //reset matrice model
-        model = glm::mat4(1.0f);
-        //effctuer une transaltion sde la position sur le model
-        model = glm::translate(model, cubePositions[i]);
-        //recalculer le mvp pour le cube en focntion des autres matrices
-        mvp = proj * view * model;
-
-        m_resources.colorUniform.use();
-        glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
-        glUniform3f(m_resources.colorLocationColorUniform, CUBE_COLORS[i][0], CUBE_COLORS[i][1], CUBE_COLORS[i][2]);
-        m_cube.draw();
-    }
 
   
     // 3)grande plateforme centrale
@@ -231,27 +211,57 @@ void SceneAttraction::run(Window& w, double dt)
                 {
                     glm::mat4 monkeyModel = finalCupModel;
                     monkeyModel = glm::scale(monkeyModel, glm::vec3(2.0f));
-  
-                    glm::vec3 monkeyPos = glm::vec3(monkeyModel[3]); // x,y,z
+                    glm::vec3 monkeyPos = glm::vec3(monkeyModel[3]);
                     float monkeyHeading = std::atan2(monkeyModel[2].x, monkeyModel[0].x);
-
-                    
-                    mvp = proj * view * monkeyModel;
-                    m_resources.texture.use(); 
-                    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
-                    m_suzanneTexture.use();
-                    m_suzanne.draw();
-
-                   
-                    if (m_cameraMode == 2)
-                    {
-                        m_cameraPosition = monkeyPos;
-                        m_cameraPosition.y = 3.8f; 
-                        m_cameraOrientation.y = monkeyHeading;
-                    }
+                
+                    m_suzanneModelMatrix = monkeyModel;
+                    m_suzannePos = monkeyPos;
+                    m_suzanneHeading = monkeyHeading;
                 }
             }
         }
+    }
+    // dessiner suzanne a l'exterieur pour ne pas avoir a redefinir le shader
+    if (m_suzanneModelMatrix != glm::mat4(0.0f))
+    {
+        m_resources.texture.use();
+        glm::mat4 mvp = proj * view * m_suzanneModelMatrix;
+        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+
+        m_suzanneTexture.use();
+        m_suzanne.draw();
+        if (m_cameraMode == 2)
+        {
+            m_cameraPosition = m_suzannePos;
+            m_cameraPosition.y = 3.8f; 
+            m_cameraOrientation.y = m_suzanneHeading;
+        }
+    }
+    
+       //faire les cubes
+       glm::vec3 cubePositions[4] = {
+        glm::vec3( 30.f, 3.0f,  0.0f),
+        glm::vec3(-30.f, 3.0f,  0.0f),
+        glm::vec3(  0.0f, 3.0f, 30.f),
+        glm::vec3(  0.0f, 3.0f,-30.f)
+    };
+
+    m_resources.colorUniform.use();
+    for (int i = 0; i < 4; i++)
+    {
+        //reset matrice model
+        model = glm::mat4(1.0f);
+        //effctuer une transaltion sde la position sur le model
+        model = glm::translate(model, cubePositions[i]);
+        //scale les cubes pour qu<ils soient de taille 6
+        model = glm::scale(model, glm::vec3(6.0f, 6.0f, 6.0f));
+        //recalculer le mvp pour le cube en focntion des autres matrices
+        mvp = proj * view * model;
+
+        
+        glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
+        glUniform3f(m_resources.colorLocationColorUniform, CUBE_COLORS[i][0], CUBE_COLORS[i][1], CUBE_COLORS[i][2]);
+        m_cube.draw();
     }
 }
 
