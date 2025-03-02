@@ -77,189 +77,164 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
 SceneAttraction::~SceneAttraction()
 {
 }
-//IMPORTANT : les rotations de tout objet dans le monde local comprends les axes aussi , une rotation dans l'axe de y changera l'orientation de x et z!!
+
 void SceneAttraction::run(Window& w, double dt)
-{   const float CUBE_COLORS[4][3] = {
-        {1.0f, 0.0f, 0.0f}, // Rouge
-        {0.0f, 1.0f, 0.0f}, // Vert
-        {0.0f, 0.0f, 1.0f}, // Bleu
-        {1.0f, 1.0f, 0.0f}  // Jaune
+{
+    const float CUBE_COLORS[4][3] = {
+        {1.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 0.0f, 1.0f},
+        {1.0f, 1.0f, 0.0f}
     };
-    
+
     ImGui::Begin("Scene Parameters");
     ImGui::Combo("Camera mode", &m_cameraMode, CAMERA_MODE_NAMES, N_CAMERA_MODE_NAMES);
     ImGui::Checkbox("Orthographic camera?", &m_isOrtho);
     ImGui::End();
-    
-    updateInput(w, dt);
-    
+    if (m_cameraMode != 1)
+        updateInput(w, dt);
+
+    // animation
     m_largePlatformAngle += 0.5 * dt;
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         m_smallPlatformAngle[i] += 0.5 * dt;
-        for (int j = 0; j < 4; j++)
+        for (int j = 0; j < 4; j++) {
             m_cupsAngles[i][j] += (0.5 + j * 0.5f) * dt;
+        }
     }
 
-    glm::mat4 model, proj, view, mvp, m_suzanneModelMatrix;
-    //definir un vecteur de position dans le but de l'optmisation
-    glm::vec3 m_suzannePos;
-    float m_suzanneHeading;
-    
-    proj = getProjectionMatrix(w);
-    
-    if (m_cameraMode == 0 || m_cameraMode == 2)
+    glm::mat4 proj = getProjectionMatrix(w);
+    glm::mat4 view;
+    if (m_cameraMode == 0 || m_cameraMode == 2) {
         view = getCameraFirstPerson();
-    else
+    } else {
         view = getCameraThirdPerson();
-    // 1. dessin de la scene
-    //  - Sol de taille 90 aux arretes   en y = -0.1 selon le doc
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -0.1f, 0.0f)); // juste un petit decalage en bas
-    mvp = proj * view * model;
+    }
 
-    // texture sur le sol
-    m_resources.texture.use();
-    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
-    m_groundTexture.use();
-    m_groundDraw.draw();
-
-  
-    // 3)grande plateforme centrale
-    //  une animationn de rotation autour de y = m_largePlatformAngle
-   // matrice de base
-    glm::mat4 modelPlateforme = glm::mat4(1.0f);
-    //prendre l'angle de rotation donne dans la classe et l,affecter au model
-    //selection de l'axe de rotation (des y)
-    modelPlateforme = glm::rotate(modelPlateforme, m_largePlatformAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-    //calculer la matrice a affecter sur les points
-    mvp = proj * view * modelPlateforme;
-    //utilisation des textures  ( fait par anne-sophie )
-    m_resources.texture.use();
-    glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
-    m_largePlatformTexture.use();
-    m_largePlatform.draw();
-
-    // 4 les petites plateormes (3 groupes)
-    ///chacune placee sur un cercle de rayon 15,placer sur un cercle sperarer par 120 degrees
-    //  les angles des mouvements temps reels : m_smallPlatformAngle[i]
-    //  - Y = 0.5 legerement surevelee par rapport au sol
-    for (int i = 0; i < 3; i++)
+    // sol
     {
-        float angle = i * glm::radians(120.0f); // 120 degrees en radians, recalcul selon la plateforme 0, 120 240
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.1f, 0.0f));
+        glm::mat4 mvp = proj * view * model;
+        m_resources.texture.use();
+        m_groundTexture.use();
+        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+        m_groundDraw.draw();
+    }
+
+    // assiette centrale
+    glm::mat4 modelPlateforme = glm::rotate(
+        glm::mat4(1.0f),
+        m_largePlatformAngle,
+        glm::vec3(0.0f, 1.0f, 0.0f)
+    );
+    {
+        glm::mat4 mvp = proj * view * modelPlateforme;
+
+        m_resources.texture.use();
+        m_largePlatformTexture.use();
+        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
+        m_largePlatform.draw();
+    }
+
+    // petites plateformes
+    {
+        m_resources.texture.use();
+        m_smallPlatformTexture.use();
+
+        for (int i = 0; i < 3; i++) {
+            float angle = i * glm::radians(120.0f);
+            glm::mat4 groupModel = modelPlateforme;
+            groupModel = glm::rotate(groupModel, angle, glm::vec3(0, 1, 0));
+            groupModel = glm::translate(groupModel, glm::vec3(15.0f, 0.0f, 0.0f));
+            groupModel = glm::rotate(groupModel, m_smallPlatformAngle[i], glm::vec3(0,1,0));
+
+            glm::mat4 mvpGroup = proj * view * groupModel;
+            glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvpGroup[0][0]);
+            m_smallPlatform.draw();
+        }
+    }
+
+    // tasse et assiettes
+    m_resources.cup.use();
+    m_cupTextureAtlas.use();
+
+    glm::mat4 suzanneModelMatrix(0.0f);
+    glm::vec3 suzannePos(0.0f);
+    float suzanneHeading = 0.0f;
+
+    for (int i = 0; i < 3; i++) {
+        float angle = i * glm::radians(120.0f);
         glm::mat4 groupModel = modelPlateforme;
-
-        // on tourne de base angle d el<objet alors qu<il est sur lorigine, cest la rotation sur lui meme les axes x et z changent
         groupModel = glm::rotate(groupModel, angle, glm::vec3(0,1,0));
-
-        // on translate a (15,0.5,0) . le rayon de 15 unites dans la direction oriente par le radiant
         groupModel = glm::translate(groupModel, glm::vec3(15.0f, 0.5f, 0.0f));
-
-        // on applique la rotation de l'animation, une rotation par raport a un cercle de sitance de 15 a loriginie
         groupModel = glm::rotate(groupModel, m_smallPlatformAngle[i], glm::vec3(0,1,0));
 
-        // Dessin de la petite plateforme
-        mvp = proj * view * groupModel; //faire le calcul final pour affecter sur l<objet
-        m_resources.texture.use();       
-        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
-        m_smallPlatformTexture.use();
-        m_smallPlatform.draw();
-
-
-        // 5. tasses et petites assiettes, 4 par groupes, un set de tasses pour chq plateforme
-        //  chacune sur un cercle de rayon 6 autour de la petite plateforme
-        //  separees par 90 degree (360/4 = 90)
-        //  chaque tasses a son propres angle d<animation qui va determiner 
-        //  assiette est à y=0 (relative), la tasse à y=0.12 par dessus
-        for (int j = 0; j < 4; j++)
-        {
-            //orientation de base pour les 4 tasses
-            float cupangle = j * glm::radians(90.0f);
-
-            // On part du groupModel (parent), et on ajoute la position/rotation de la tasse
+        for (int j = 0; j < 4; j++) {
+            float cupAngle = j * glm::radians(90.0f);
             glm::mat4 cupBase = groupModel;
-            cupBase = glm::rotate(cupBase, cupangle, glm::vec3(0,1,0));
+            cupBase = glm::rotate(cupBase, cupAngle, glm::vec3(0,1,0));
             cupBase = glm::translate(cupBase, glm::vec3(6.0f, 0.0f, 0.0f));
             cupBase = glm::rotate(cupBase, m_cupsAngles[i][j], glm::vec3(0,1,0));
 
-            // petites assiette
+            // blo assiette
             {
                 glm::mat4 plateModel = cupBase;
-                mvp = proj * view * plateModel;
-                
-                m_resources.cup.use();
-                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
+                glm::mat4 mvpPlate = proj * view * plateModel;
+                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvpPlate[0][0]);
                 glUniform1i(m_resources.isPlateLocationCup, 1);
                 glUniform1i(m_resources.textureIndexLocationCup, j);
-                m_cupTextureAtlas.use();
                 m_cupPlate.draw();
             }
-
-            // tasse
+            // bloc tasse
             {
-                glm::mat4 finalCupModel = cupBase;
-                finalCupModel = glm::translate(finalCupModel, glm::vec3(0.0f, 0.12f, 0.0f)); // tasse un peu plus haut
-                mvp = proj * view * finalCupModel;
-                m_resources.cup.use();
-                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvp[0][0]);
+                glm::mat4 finalCupModel = glm::translate(cupBase, glm::vec3(0.0f, 0.12f, 0.0f));
+                glm::mat4 mvpCup = proj * view * finalCupModel;
+                glUniformMatrix4fv(m_resources.mvpLocationCup, 1, GL_FALSE, &mvpCup[0][0]);
                 glUniform1i(m_resources.isPlateLocationCup, 0);
                 glUniform1i(m_resources.textureIndexLocationCup, j);
-                m_cupTextureAtlas.use();
                 m_cup.draw();
 
-                if (i == 0 && j == 0)
-                {
-                    glm::mat4 monkeyModel = finalCupModel;
-                    monkeyModel = glm::scale(monkeyModel, glm::vec3(2.0f));
-                    glm::vec3 monkeyPos = glm::vec3(monkeyModel[3]);
-                    float monkeyHeading = std::atan2(monkeyModel[2].x, monkeyModel[0].x);
-                
-                    m_suzanneModelMatrix = monkeyModel;
-                    m_suzannePos = monkeyPos;
-                    m_suzanneHeading = monkeyHeading;
+                if (i == 0 && j == 0) {
+                    glm::mat4 monkeyModel = glm::scale(finalCupModel, glm::vec3(2.0f));
+                    suzanneModelMatrix = monkeyModel;
+                    suzannePos = glm::vec3(monkeyModel[3]);
+                    suzanneHeading = std::atan2(monkeyModel[2].x, monkeyModel[0].x);
                 }
             }
         }
     }
-    // dessiner suzanne a l'exterieur pour ne pas avoir a redefinir le shader
-    if (m_suzanneModelMatrix != glm::mat4(0.0f))
-    {
-        m_resources.texture.use();
-        glm::mat4 mvp = proj * view * m_suzanneModelMatrix;
-        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
 
+    if (suzanneModelMatrix != glm::mat4(0.0f)) {
+        m_resources.texture.use();
+        glm::mat4 mvpSuzanne = proj * view * suzanneModelMatrix;
+        glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvpSuzanne[0][0]);
         m_suzanneTexture.use();
         m_suzanne.draw();
-        if (m_cameraMode == 2)
-        {
-            m_cameraPosition = m_suzannePos;
-            m_cameraPosition.y = 3.8f; 
-            m_cameraOrientation.y = m_suzanneHeading;
+
+        if (m_cameraMode == 2) {
+            m_cameraPosition = suzannePos;
+            m_cameraPosition.y = 3.8f;
+            m_cameraOrientation.y = suzanneHeading;
         }
     }
-    
-       //faire les cubes
-       glm::vec3 cubePositions[4] = {
-        glm::vec3( 30.f, 3.0f,  0.0f),
-        glm::vec3(-30.f, 3.0f,  0.0f),
-        glm::vec3(  0.0f, 3.0f, 30.f),
-        glm::vec3(  0.0f, 3.0f,-30.f)
+
+    // === DESSIN DES CUBES ===
+    m_resources.colorUniform.use();
+
+    glm::vec3 cubePositions[4] = {
+        glm::vec3(30.f, 3.0f, 0.0f),
+        glm::vec3(-30.f, 3.0f, 0.0f),
+        glm::vec3( 0.0f, 3.0f, 30.f),
+        glm::vec3( 0.0f, 3.0f,-30.f)
     };
 
-    m_resources.colorUniform.use();
-    for (int i = 0; i < 4; i++)
-    {
-        //reset matrice model
-        model = glm::mat4(1.0f);
-        //effctuer une transaltion sde la position sur le model
+    for (int i = 0; i < 4; i++) {
+        glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, cubePositions[i]);
-        //scale les cubes pour qu<ils soient de taille 6
-        model = glm::scale(model, glm::vec3(6.0f, 6.0f, 6.0f));
-        //recalculer le mvp pour le cube en focntion des autres matrices
-        mvp = proj * view * model;
+        model = glm::scale(model, glm::vec3(6.f));
+        glm::mat4 mvpCube = proj * view * model;
 
-        
-        glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvp[0][0]);
+        glUniformMatrix4fv(m_resources.mvpLocationColorUniform, 1, GL_FALSE, &mvpCube[0][0]);
         glUniform3f(m_resources.colorLocationColorUniform, CUBE_COLORS[i][0], CUBE_COLORS[i][1], CUBE_COLORS[i][2]);
         m_cube.draw();
     }
@@ -312,30 +287,15 @@ void SceneAttraction::updateInput(Window& w, double dt)
 
 glm::mat4 SceneAttraction::getCameraFirstPerson()
 {
-    // TODO
-    // message discord annso.
-    //CONTEXTE : les attributs de la classe m_cameraPostion et m_cameraOrientation stockent les positions enregistrer relle de la camera
-    // nous voulons creer une matrice pour bind la camera a ces positions pour simuler l'effet de premiere personne. Normalement je suppsoe
-    // que, a chaque frame nous reclaculons avec les entree du clavienr pour faire une matrice qui va deplacer la postiion de la scene pour 
-    //correspondre avec la postion theoriqeu de la camera
-
-    //1.commencer avec une matrice identite creer
+    // todo
     glm::mat4 firstPerson = glm::mat4(1.0f);
-
-    //2.appliquer un deplacement de la camera chacuns des point de la camera :
-    //exemple: nous avons precedemment deplacer la camera or nous voulons creer une matrice qui
-    // va depalcer les points vers la position actuelle pour qu<on deplace vers la position que devrait etre la camera
     firstPerson = glm::translate(firstPerson, m_cameraPosition);
 
-    //3. pivoter la matrice selon l<axe vertical,pour oreinter la camera
     glm::vec3 verticalOrientation = glm::vec3(0.0f,1.0f,0.0f);
     firstPerson = glm::rotate(firstPerson, m_cameraOrientation[1], verticalOrientation );
 
-    //4. oreintation horizontale, orienter vers la camera
     glm::vec3 horizontalOrientation = glm::vec3(1.0f,0.0f,0.0f);
     firstPerson = glm::rotate(firstPerson, m_cameraOrientation[0], horizontalOrientation );
-
-    //5.pour obtenir la matrice de vue relle il faut tout inverser transformation de la camera, affecter tous les points a ceci
 
     return glm::inverse(firstPerson);
 }
@@ -343,8 +303,22 @@ glm::mat4 SceneAttraction::getCameraFirstPerson()
 
 glm::mat4 SceneAttraction::getCameraThirdPerson()
 {
-    // TODO
-    return glm::mat4(1.0);
+    // la position de la cmaera doit toujorus regarder le (0,0,,0 ) soit le centre de la scene
+    glm::vec3 target = glm::vec3(0,0,0);
+    
+    //definition des parametres d<offset pour la camera a la troisieme personne
+    const float distance = 36.0f; //comme la distance derriere le personnage (specifier dans le lab)
+    const float height = 15.0f; // et la hauteur au dessus du personnage
+
+    // // calcul du vecteur foward a partir d el,angle de la camera
+    // //on part de l,axe des -z qui est la diretion par defaut et on le fait tourner autour de y selon la position actuelle de la camera
+    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), m_cameraOrientation[1], glm::vec3(0,1,0));
+    glm::vec3 foward = glm::vec3(rotationMatrix * glm::vec4(0,0,-1,0));
+
+    // positionner la camera
+    glm::vec3 cameraPos = target - foward*distance + glm::vec3(0,height, 0);
+
+    return glm::lookAt(cameraPos, target, glm::vec3(0,1,0));
 }
 
 glm::mat4 SceneAttraction::getProjectionMatrix(Window& w)
