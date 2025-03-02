@@ -8,10 +8,6 @@ uniform mat4 mvp;
 uniform int cupIndex;
 uniform int isPlate;
 
-// Tasse verte index 0
-// Tasse jaune index 1
-// Tasse bleue index 2
-// Tasse rouge index 3
 void main() {
     gl_Position = mvp * vec4(in_position, 1.0);
 
