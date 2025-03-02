@@ -148,11 +148,13 @@ void SceneAttraction::run(Window& w, double dt)
     // 3)grande plateforme centrale
     //  une animationn de rotation autour de y = m_largePlatformAngle
    // matrice de base
-    model = glm::mat4(1.0f);
+    glm::mat4 modelPlateforme = glm::mat4(1.0f);
     //prendre l'angle de rotation donne dans la classe et l,affecter au model
-    model = glm::rotate(model, m_largePlatformAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-    
-    mvp = proj * view * model;
+    //selection de l'axe de rotation (des y)
+    modelPlateforme = glm::rotate(modelPlateforme, m_largePlatformAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+    //calculer la matrice a affecter sur les points
+    mvp = proj * view * modelPlateforme;
+    //utilisation des textures  ( fait par anne-sophie )
     m_resources.texture.use();
     glUniformMatrix4fv(m_resources.mvpLocationTexture, 1, GL_FALSE, &mvp[0][0]);
     m_largePlatformTexture.use();
@@ -165,7 +167,7 @@ void SceneAttraction::run(Window& w, double dt)
     for (int i = 0; i < 3; i++)
     {
         float angle = i * glm::radians(120.0f); // 120 degrees en radians, recalcul selon la plateforme 0, 120 240
-        glm::mat4 groupModel(1.0f);
+        glm::mat4 groupModel = modelPlateforme;
 
         // on tourne de base angle d el<objet alors qu<il est sur lorigine, cest la rotation sur lui meme les axes x et z changent
         groupModel = glm::rotate(groupModel, angle, glm::vec3(0,1,0));
