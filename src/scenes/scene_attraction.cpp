@@ -7,7 +7,10 @@
 
 #include "utils.h"
 
-// TODO - coordonnées de texture
+const int FIRST_PERSON_VIEW = 0;
+const int THIRD_PERSON_VIEW = 1;
+const int MONKEY_VIEW = 2;
+
 const GLfloat groundData[] = {
     -45.f, 0.0f, -45.f,  -3.0f, -3.0f,
      45.f, 0.0f, -45.f,  3.0f, -3.0f,
@@ -22,7 +25,7 @@ const GLubyte indexes[] = {
 SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
 : Scene(res)
 , m_isMouseMotionEnabled(isMouseMotionEnabled)
-, m_cameraMode(0)
+, m_cameraMode(FIRST_PERSON_VIEW)
 , m_isOrtho(false)
 , m_cameraPosition(0.0f, 5.0f, 0.0f)
 , m_cameraOrientation(0.0f, 0.0f)
@@ -49,16 +52,13 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
 , m_smallPlatformTexture("../textures/smallPlatform.png")
 , m_largePlatformTexture("../textures/largePlatform.png")
 {
-    // TODO - spécifier les attributs
-
     m_groundVao.bind();
     m_groundIndicesBuffer.bind();
     m_groundVao.specifyAttribute(m_groundBuffer, 0, 3, 5, 0); 
     m_groundVao.specifyAttribute(m_groundBuffer, 1, 2, 5, 3); 
     m_groundVao.unbind();
     
-    // TODO - init des textures
-    m_groundTexture.setWrap(GL_REPEAT); // repeter la texture
+    m_groundTexture.setWrap(GL_REPEAT);
     m_groundTexture.enableMipmap();
 
     m_suzanneTexture.setFiltering(GL_LINEAR);
@@ -71,15 +71,17 @@ SceneAttraction::SceneAttraction(Resources& res, bool& isMouseMotionEnabled)
     m_smallPlatformTexture.setWrap(GL_CLAMP_TO_EDGE);
 
     m_largePlatformTexture.setFiltering(GL_NEAREST);
-    m_largePlatformTexture.setWrap(GL_CLAMP_TO_EDGE); // effet pixelise
+    m_largePlatformTexture.setWrap(GL_CLAMP_TO_EDGE);
 }
 
-SceneAttraction::~SceneAttraction()
-{
-}
+SceneAttraction::~SceneAttraction() {}
 
 void SceneAttraction::run(Window& w, double dt)
 {
+    const int CUP_QUANTITY = 4;
+    const int PLATE_QUANTITY = 3;
+    const int PLATEFORM_QUANTITY = 3;
+
     const float CUBE_COLORS[4][3] = {
         {1.0f, 0.0f, 0.0f},
         {0.0f, 1.0f, 0.0f},
@@ -91,21 +93,21 @@ void SceneAttraction::run(Window& w, double dt)
     ImGui::Combo("Camera mode", &m_cameraMode, CAMERA_MODE_NAMES, N_CAMERA_MODE_NAMES);
     ImGui::Checkbox("Orthographic camera?", &m_isOrtho);
     ImGui::End();
-    if (m_cameraMode != 1)
+    if (m_cameraMode != THIRD_PERSON_VIEW)
         updateInput(w, dt);
 
     // animation
     m_largePlatformAngle += 0.5 * dt;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < PLATEFORM_QUANTITY; i++) {
         m_smallPlatformAngle[i] += 0.5 * dt;
-        for (int j = 0; j < 4; j++) {
+        for (int j = 0; j < CUP_QUANTITY; j++) {
             m_cupsAngles[i][j] += (0.5 + j * 0.5f) * dt;
         }
     }
 
     glm::mat4 proj = getProjectionMatrix(w);
     glm::mat4 view;
-    if (m_cameraMode == 0 || m_cameraMode == 2) {
+    if (m_cameraMode == FIRST_PERSON_VIEW || m_cameraMode == MONKEY_VIEW) {
         view = getCameraFirstPerson();
     } else {
         view = getCameraThirdPerson();
@@ -141,7 +143,7 @@ void SceneAttraction::run(Window& w, double dt)
         m_resources.texture.use();
         m_smallPlatformTexture.use();
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < PLATEFORM_QUANTITY; i++) {
             float angle = i * glm::radians(120.0f);
             glm::mat4 groupModel = modelPlateforme;
             groupModel = glm::rotate(groupModel, angle, glm::vec3(0, 1, 0));
@@ -162,14 +164,14 @@ void SceneAttraction::run(Window& w, double dt)
     glm::vec3 suzannePos(0.0f);
     float suzanneHeading = 0.0f;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < PLATE_QUANTITY; i++) {
         float angle = i * glm::radians(120.0f);
         glm::mat4 groupModel = modelPlateforme;
         groupModel = glm::rotate(groupModel, angle, glm::vec3(0,1,0));
         groupModel = glm::translate(groupModel, glm::vec3(15.0f, 0.5f, 0.0f));
         groupModel = glm::rotate(groupModel, m_smallPlatformAngle[i], glm::vec3(0,1,0));
 
-        for (int j = 0; j < 4; j++) {
+        for (int j = 0; j < CUP_QUANTITY; j++) {
             float cupAngle = j * glm::radians(90.0f);
             glm::mat4 cupBase = groupModel;
             cupBase = glm::rotate(cupBase, cupAngle, glm::vec3(0,1,0));
@@ -287,7 +289,6 @@ void SceneAttraction::updateInput(Window& w, double dt)
 
 glm::mat4 SceneAttraction::getCameraFirstPerson()
 {
-    // todo
     glm::mat4 firstPerson = glm::mat4(1.0f);
     firstPerson = glm::translate(firstPerson, m_cameraPosition);
 
@@ -307,15 +308,12 @@ glm::mat4 SceneAttraction::getCameraThirdPerson()
     glm::vec3 target = glm::vec3(0,0,0);
     
     //definition des parametres d<offset pour la camera a la troisieme personne
-    const float distance = 36.0f; //comme la distance derriere le personnage (specifier dans le lab)
-    const float height = 15.0f; // et la hauteur au dessus du personnage
+    const float distance = 36.0f;
+    const float height = 15.0f;
 
-    // // calcul du vecteur foward a partir d el,angle de la camera
-    // //on part de l,axe des -z qui est la diretion par defaut et on le fait tourner autour de y selon la position actuelle de la camera
     glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), m_cameraOrientation[1], glm::vec3(0,1,0));
     glm::vec3 foward = glm::vec3(rotationMatrix * glm::vec4(0,0,-1,0));
 
-    // positionner la camera
     glm::vec3 cameraPos = target - foward*distance + glm::vec3(0,height, 0);
 
     return glm::lookAt(cameraPos, target, glm::vec3(0,1,0));

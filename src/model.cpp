@@ -7,8 +7,6 @@ m_ebo(),
 m_vao(),
 m_drawcall(m_vao, 0, GL_UNSIGNED_INT) 
 {
-	// TODO
-	// Cette fois-ci, la méthode BufferObject::allocate est publique (et devrait être utilisé ici)
 	std::vector<GLfloat> vertexData;
 	std::vector<GLuint> indices;
 	loadObj(path,vertexData,indices);
